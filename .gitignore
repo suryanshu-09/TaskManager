@@ -19,5 +19,10 @@ android
 # macOS
 .DS_Store
 
+# Environment variables
+.env
+.env.local
+.env.production
+
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
