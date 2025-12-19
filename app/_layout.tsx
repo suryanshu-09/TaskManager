@@ -78,15 +78,19 @@ export default function RootLayout() {
 
   if (!isDbReady) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: '#F9FAFB',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-        <ActivityIndicator size="large" color="#4F79DB" />
-      </SafeAreaView>
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+        <ClerkLoaded>
+          <SafeAreaView
+            style={{
+              flex: 1,
+              backgroundColor: '#F9FAFB',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            <ActivityIndicator size="large" color="#4F79DB" />
+          </SafeAreaView>
+        </ClerkLoaded>
+      </ClerkProvider>
     );
   }
 

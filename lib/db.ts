@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-const DATABASE_NAME = process.env.DATABASE_NAME!;
+const DATABASE_NAME = process.env.DATABASE_NAME || 'taskmanager.db';
 
 export const db = SQLite.openDatabaseSync(DATABASE_NAME);
 
