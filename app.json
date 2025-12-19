@@ -10,7 +10,10 @@
     "experiments": {
       "tsconfigPaths": true
     },
-    "plugins": ["expo-router", "expo-font"],
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,7 +22,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.suryanshu09.TaskManager"
@@ -33,8 +38,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "4aeec3f3-e21e-4de3-b642-255284bd892d"
-      }
+        "projectId": "7e1bc6e7-05cc-4cf6-81cb-7c5b6726ee94"
+      },
+      "router": {}
     }
   }
 }
