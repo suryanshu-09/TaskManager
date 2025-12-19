@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.API_BASE_URL!;
+const API_BASE_URL = process.env.API_BASE_URL || 'https://hiring-challenge.exaqube.com';
 
 export interface ApiTask {
   id: string;
@@ -97,25 +97,46 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   const token = await getAuthToken();
   console.log('Token available:', !!token, 'Token length:', token?.length || 0);
 
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      console.log('Token payload:', {
-        exp: payload.exp,
-        iat: payload.iat,
-        sub: payload.sub,
-        expDate: new Date(payload.exp * 1000).toISOString(),
-        now: new Date().toISOString(),
-        isExpired: Date.now() > payload.exp * 1000,
-      });
-    } catch (e) {
-      console.log('Could not decode token:', e instanceof Error ? e.message : e);
-    }
-  }
-
   if (!token) {
     console.error('No authentication token available');
     throw new UnauthorizedError('No authentication token available');
+  }
+
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.error('Invalid token format');
+      throw new UnauthorizedError('Invalid authentication token');
+    }
+
+    const payload = JSON.parse(atob(parts[1]));
+    const now = Date.now();
+    const expTime = payload.exp * 1000;
+
+    console.log('Token retrieved from Clerk:', true, 'Length:', token.length);
+    console.log('Token payload:', {
+      exp: payload.exp,
+      expDate: new Date(expTime).toISOString(),
+      iat: payload.iat,
+      sub: payload.sub,
+      now: new Date(now).toISOString(),
+      isExpired: now > expTime,
+    });
+
+    if (now > expTime) {
+      console.error('Token is expired');
+      throw new UnauthorizedError('Authentication token expired');
+    }
+
+    if (expTime - now < 5 * 60 * 1000) {
+      console.warn('Token will expire soon, consider refreshing');
+    }
+  } catch (e) {
+    if (e instanceof UnauthorizedError) {
+      throw e;
+    }
+    console.error('Could not validate token:', e instanceof Error ? e.message : e);
+    throw new UnauthorizedError('Invalid authentication token');
   }
 
   const url = `${API_BASE_URL}${endpoint}`;

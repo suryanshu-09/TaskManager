@@ -128,7 +128,6 @@ export default function SignIn() {
           <View
             className="flex-1 justify-center px-6 py-12"
             style={{ paddingBottom: insets.bottom + 48 }}>
-            {/* Logo */}
             <View className="mb-8 items-center">
               <Image
                 source={require('../assets/logo.png')}
@@ -139,14 +138,12 @@ export default function SignIn() {
               <Text className="mt-2 text-base text-gray-500">Sign in to continue</Text>
             </View>
 
-            {/* Error Message */}
             {error && (
               <View className="mb-4 rounded-lg bg-red-50 p-3">
                 <Text className="text-center text-sm text-red-600">{error}</Text>
               </View>
             )}
 
-            {/* Form */}
             <View className="space-y-4">
               {!needsSecondFactor ? (
                 <>
@@ -242,7 +239,6 @@ export default function SignIn() {
               )}
             </View>
 
-            {/* Sign Up Link */}
             <View className="mt-8 flex-row items-center justify-center">
               <Text className="text-base text-gray-500">{"Don't have an account? "}</Text>
               <Link href="/sign-up" asChild>

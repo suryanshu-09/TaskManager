@@ -19,11 +19,15 @@ export function useSync() {
       setIsSyncing(true);
       setSyncError(null);
 
-      await sync();
+      const success = await sync();
 
-      setLastSyncTime(Date.now());
+      if (success) {
+        setLastSyncTime(Date.now());
+      }
     } catch (error) {
-      setSyncError(error instanceof Error ? error.message : 'Sync failed');
+      if (error instanceof Error && !error.message.includes('Authentication required')) {
+        setSyncError(error.message);
+      }
       console.error('Sync error:', error);
     } finally {
       setIsSyncing(false);
@@ -43,7 +47,9 @@ export function useSync() {
 
   useEffect(() => {
     if (isConnected && !isSyncing && pendingChanges > 0) {
-      triggerSync();
+      triggerSync().catch((error) => {
+        console.log('Auto-sync failed, will retry later:', error);
+      });
     }
   }, [isConnected, isSyncing, pendingChanges, triggerSync]);
 

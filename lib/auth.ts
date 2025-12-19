@@ -1,7 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-export const CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY!;
+export const CLERK_PUBLISHABLE_KEY =
+  process.env.CLERK_PUBLISHABLE_KEY || 'pk_test_aGlwLXNoZWVwZG9nLTIzLmNsZXJrLmFjY291bnRzLmRldiQ';
 
 export const tokenCache = {
   async getToken(key: string): Promise<string | null> {

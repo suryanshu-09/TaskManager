@@ -136,6 +136,11 @@ async function pushChanges(): Promise<{ success: boolean; errors: string[] }> {
       markTaskAsSynced(task.id, { lastUpdatedAt: serverTask.lastUpdatedAt });
       console.log(`Synced created task: ${task.id}`);
     } catch (error) {
+      if (error instanceof api.UnauthorizedError) {
+        errors.push('Authentication required - please sign in again');
+        console.log('Authentication error during push, preserving local changes');
+        return { success: false, errors };
+      }
       const msg = error instanceof Error ? error.message : 'Unknown error';
       errors.push(`Failed to create task "${task.title}": ${msg}`);
       console.error(`Failed to sync created task ${task.id}:`, error);
@@ -163,7 +168,11 @@ async function pushChanges(): Promise<{ success: boolean; errors: string[] }> {
       markTaskAsSynced(task.id, { lastUpdatedAt: serverTask.lastUpdatedAt });
       console.log(`Synced modified task: ${task.id}`);
     } catch (error) {
-      if (error instanceof api.ConflictError) {
+      if (error instanceof api.UnauthorizedError) {
+        errors.push('Authentication required - please sign in again');
+        console.log('Authentication error during push, preserving local changes');
+        return { success: false, errors };
+      } else if (error instanceof api.ConflictError) {
         console.log(`Conflict detected for task ${task.id}, resolving with last-write-wins`);
         await handleConflict(task, error.serverTask);
       } else if (error instanceof api.NotFoundError) {
@@ -194,7 +203,11 @@ async function pushChanges(): Promise<{ success: boolean; errors: string[] }> {
       removeSyncedDeletedTask(task.id);
       console.log(`Synced deleted task: ${task.id}`);
     } catch (error) {
-      if (error instanceof api.NotFoundError) {
+      if (error instanceof api.UnauthorizedError) {
+        errors.push('Authentication required - please sign in again');
+        console.log('Authentication error during push, preserving local changes');
+        return { success: false, errors };
+      } else if (error instanceof api.NotFoundError) {
         removeSyncedDeletedTask(task.id);
         console.log(`Task ${task.id} already deleted on server, removing locally`);
       } else {
@@ -305,6 +318,10 @@ async function pullChanges(): Promise<{ success: boolean; error?: string }> {
 
     return { success: true };
   } catch (error) {
+    if (error instanceof api.UnauthorizedError) {
+      console.log('Authentication error during pull, will retry later');
+      return { success: false, error: 'Authentication required - please sign in again' };
+    }
     const msg = error instanceof Error ? error.message : 'Unknown error';
     console.error('Failed to pull changes:', error);
     return { success: false, error: msg };
@@ -344,18 +361,52 @@ export async function sync(): Promise<boolean> {
       ]
         .filter(Boolean)
         .join('; ');
-      setSyncState('error', errorMsg);
+
+      if (errorMsg.includes('Authentication required')) {
+        console.log(
+          'Authentication issue detected, preserving local changes until re-authentication'
+        );
+        setSyncState('idle');
+      } else {
+        const userFriendlyMsg = errorMsg
+          .replace(/Failed to (create|update|delete) task "([^"]+)": ([^;]+)/g, '$2 issue')
+          .replace(/Pull failed: (.+)/, 'Server sync issue')
+          .replace(/Network error - Please check your connection/, 'No internet connection')
+          .split('; ')
+          .filter(Boolean)
+          .slice(0, 2)
+          .join('; ');
+        setSyncState('error', userFriendlyMsg);
+      }
+
       notifySyncComplete(false, errorMsg);
       console.log('Sync failed, local tasks preserved:', {
         pushErrors: pushResult.errors.length,
         pullError: pullResult.error,
-        localTaskCount: getAllTasks().length,
+        localTaskCount: (() => {
+          try {
+            return getAllTasks().length;
+          } catch {
+            return 0;
+          }
+        })(),
       });
       return false;
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown sync error';
-    setSyncState('error', msg);
+
+    if (msg.includes('Authentication required')) {
+      console.log('Authentication issue in sync, preserving local changes');
+      setSyncState('idle');
+    } else {
+      const userFriendlyMsg = msg
+        .replace(/Network error - .*/, 'Connection issue')
+        .replace(/Server error \(\d+\).*/, 'Server unavailable')
+        .replace(/Unknown sync error/, 'Sync unavailable');
+      setSyncState('error', userFriendlyMsg);
+    }
+
     notifySyncComplete(false, msg);
     console.error('Sync failed:', error);
     return false;
@@ -407,18 +458,24 @@ export function initializeSync(): void {
   addNetworkListener((isOnline) => {
     if (isOnline && !isSyncInProgress) {
       console.log('Network available, triggering sync');
-      sync();
+      sync().catch((error) => {
+        console.log('Initial sync failed, app will continue offline:', error);
+      });
     }
   });
 
-  sync();
+  sync().catch((error) => {
+    console.log('Initial sync failed, app will continue offline:', error);
+  });
 }
 
 export function startPeriodicSync(intervalMs: number = SYNC_INTERVAL_MS): void {
   stopPeriodicSync();
   syncInterval = setInterval(() => {
     if (isOnline() && !isSyncInProgress) {
-      sync();
+      sync().catch((error) => {
+        console.log('Periodic sync failed, app will continue offline:', error);
+      });
     }
   }, intervalMs);
   console.log(`Periodic sync started (interval: ${intervalMs}ms)`);
